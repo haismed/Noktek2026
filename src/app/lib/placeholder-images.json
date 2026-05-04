@@ -1,0 +1,11 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "noktek-logo",
+      "description": "NokTek official logo: A modern, high-tech stylized 'N' icon with a vibrant purple and blue gradient. The 'N' is encircled by a thin glowing orbit containing small interaction icons: a yellow star at the top, a blue thumbs-up, and a purple heart. The design is sleek, professional, and optimized for dark mode interfaces.",
+      "imageUrl": "https://picsum.photos/seed/noktek-brand-identity-v2/400/400",
+      "imageHint": "tech logo"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document with full economic and privacy stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "ticketLosses": { "type": "number", "description": "Total points spent on non-winning tickets" },
+        "compensationQualifiedAt": { "type": "object", "description": "Timestamp when user reached threshold" },
+        "withdrawablePoints": { "type": "number" },
+        "lockedPoints": { "type": "number" },
+        "storeWallet_liquid": { "type": "number" },
+        "storeWallet_restricted": { "type": "number" },
+        "isAdmin": { "type": "boolean" }
+      },
+      "required": ["uid", "email"]
+    },
+    "CompensationPool": {
+      "title": "Compensation Pool",
+      "description": "Global fund tracking compensation reserves",
+      "type": "object",
+      "properties": {
+        "balance": { "type": "number" },
+        "totalCompensated": { "type": "number" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["email", "google"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User records with loss tracking"
+    },
+    "/platform/compensation": {
+      "schema": "CompensationPool",
+      "description": "Global compensation fund balance"
+    }
+  }
+}

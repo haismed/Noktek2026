@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 280 17% 9%;
+    --foreground: 0 0% 98%;
+    --card: 280 17% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 280 17% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 277 87% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 211 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 280 10% 20%;
+    --muted-foreground: 280 5% 70%;
+    --accent: 211 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 280 10% 20%;
+    --input: 280 10% 20%;
+    --ring: 277 87% 53%;
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Tajawal', sans-serif;
+    direction: rtl;
+  }
+}
+
+.font-headline {
+  font-family: 'Tajawal', sans-serif;
+}
+
+/* Custom styles for the bottom navigation and mobile responsiveness */
+.bottom-nav {
+  @apply fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border flex items-center justify-around z-50 px-4;
+}
+
+.nav-item {
+  @apply flex flex-col items-center justify-center text-muted-foreground transition-colors duration-200;
+}
+
+.nav-item.active {
+  @apply text-primary;
+}
+
+.pulse-card {
+  @apply bg-gradient-to-br from-primary/20 to-secondary/20 border-none shadow-lg;
+}

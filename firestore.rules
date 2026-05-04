@@ -1,0 +1,77 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return request.auth.uid == userId; }
+    function getUserData() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isAdmin() { return getUserData().isAdmin == true; }
+    
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (isOwner(userId) && !(request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['totalPoints', 'withdrawablePoints', 'lockedPoints', 'isAdmin', 'referralCode', 'ticketLosses', 'compensationQualifiedAt']))) ||
+        // السماح بتحديثات العدادات المالية من النظام فقط
+        (request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalPoints', 'withdrawablePoints', 'lockedPoints', 'totalEarned', 'ticketLosses', 'compensationQualifiedAt', 'storeTransferCount', 'lockedTransferCount', 'advertisingBalance']))
+      );
+      allow create: if isSignedIn();
+    }
+
+    match /platform/compensation {
+      allow read: if isSignedIn();
+      allow write: if isAdmin(); // التحديث يتم عبر Transactions أو Cloud Functions فقط
+    }
+
+    match /products/{pId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+    }
+
+    match /engagements/{engId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow update: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+    
+    match /friendships/{fId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /friendRequests/{rId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /notifications/{nId} {
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+    }
+    
+    match /platform/stats {
+      allow read: if true;
+      allow update: if isSignedIn(); // للسماح بتحديث مسبح المكافآت آلياً
+    }
+
+    match /reports/{rId} {
+      allow create: if isSignedIn();
+      allow read, delete: if isAdmin();
+    }
+
+    match /withdrawals/{wId} {
+      allow create, read: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /transactions/{tId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+    }
+
+    match /chats/{chatId}/{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
