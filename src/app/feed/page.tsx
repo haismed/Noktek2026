@@ -92,15 +92,17 @@ export default function FeedPage() {
       
       // ترتيب يدوي في حال استخدام 'in' لتجنب مشاكل الـ Index في الـ Beta
       if (activeTab === "for-you" || activeTab === "trending") {
-        data = data.sort((a, b) => {
-          const timeA = (a as any ).createdAt?.toMillis?.() || 0;
-          const timeB = (b as any ).createdAt?.toMillis?.() || 0;
-          return timeB - timeA;
-        });
-      }
+  data = data.sort((a: any, b: any) => {
+    const timeA = a.createdAt?.toMillis?.() || 0;
+    const timeB = b.createdAt?.toMillis?.() || 0;
+    return timeB - timeA;
+  });
+}
+
+setPosts(data);
+setLoading(false);
       
-      setPosts(data);
-      setLoading(false);
+  
     }, (error) => {
       console.error("Feed error:", error);
       setLoading(false);
