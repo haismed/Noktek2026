@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Landmark, ArrowRight, CheckCircle, XCircle, Clock, Wallet, UserCircle, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-
+import { cn } from "@/lib/utils"
 export default function AdminWithdrawalsPage() {
   const { userData } = useAuth();
   const router = useRouter();
