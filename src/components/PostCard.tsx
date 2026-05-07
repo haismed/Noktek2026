@@ -166,7 +166,7 @@ export default function PostCard({ post, onLikeOverride, likeDisabled, externalE
   }, [commentTimer]);
 
   const handleLike = async () => {
-    if (!likeUnlocked &&!post.isSponsored) {
+    if (!likeUnlocked && !post.isSponsored) {
       toast({ title: "مقفل 🔒", description: `شاهد ${45 - viewSeconds} ثانية لفتح الإعجاب` });
       return;
     }
