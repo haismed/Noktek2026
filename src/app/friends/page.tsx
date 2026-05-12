@@ -1,3 +1,4 @@
+TypeScript
 "use client";
 
 import { useAuth } from "@/context/auth-context";
@@ -133,7 +134,7 @@ export default function FriendsPage() {
       );
     });
 
-    // قائمة الأصدقاء
+    // الأصدقاء
     const qFriends = query(
       collection(db, "friendships"),
       where("users", "array-contains", user.uid)
@@ -143,9 +144,9 @@ export default function FriendsPage() {
       try {
         const friendIds = snap.docs
           .map((d) =>
-            d
-              .data()
-              .users?.find((id: string) => id !== user.uid)
+            d.data().users?.find(
+              (id: string) => id !== user.uid
+            )
           )
           .filter(Boolean);
 
@@ -235,8 +236,8 @@ export default function FriendsPage() {
 
       await sendFriendRequest(
         target.uid,
-        target.displayName,
-        target.photoURL
+        target.displayName || "مستخدم",
+        target.photoURL || ""
       );
 
       toast({
@@ -296,13 +297,11 @@ export default function FriendsPage() {
   ) => {
     if (!friendId) return;
 
-    if (
-      !window.confirm(
-        "هل أنت متأكد من حذف الصديق؟"
-      )
-    ) {
-      return;
-    }
+    const confirmed = window.confirm(
+      "هل أنت متأكد من حذف الصديق؟"
+    );
+
+    if (!confirmed) return;
 
     try {
       await removeFriend(friendId);
@@ -318,6 +317,8 @@ export default function FriendsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-32">
+
+      {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link href="/">
           <Button
@@ -340,6 +341,7 @@ export default function FriendsPage() {
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-4 bg-card h-14 rounded-2xl p-1 mb-8 border border-border">
+
           <TabsTrigger
             value="find"
             className="rounded-xl font-bold"
@@ -415,6 +417,7 @@ export default function FriendsPage() {
                 className="rounded-2xl"
               >
                 <CardContent className="p-4 flex items-center justify-between">
+
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12">
                       <AvatarImage
@@ -432,9 +435,7 @@ export default function FriendsPage() {
                       </h4>
 
                       <p className="text-xs text-muted-foreground">
-                        @
-                        {result.username ||
-                          "user"}
+                        @{result.username || "user"}
                       </p>
                     </div>
                   </div>
@@ -458,12 +459,14 @@ export default function FriendsPage() {
         {/* الأصدقاء */}
         <TabsContent value="friends">
           <div className="space-y-4">
+
             {myFriends.map((friend) => (
               <Card
                 key={friend.id}
                 className="rounded-2xl"
               >
                 <CardContent className="p-4 flex items-center justify-between">
+
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12">
                       <AvatarImage
@@ -490,10 +493,10 @@ export default function FriendsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="text-destructive"
                     onClick={() =>
                       handleUnfriend(friend.uid)
                     }
-                    className="text-destructive"
                   >
                     <Trash2 size={18} />
                   </Button>
@@ -512,12 +515,14 @@ export default function FriendsPage() {
         {/* الواردة */}
         <TabsContent value="received">
           <div className="space-y-4">
+
             {receivedRequests.map((req) => (
               <Card
                 key={req.id}
                 className="rounded-2xl border-primary/20 bg-primary/5"
               >
                 <CardContent className="p-4 flex items-center justify-between">
+
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12">
                       <AvatarImage
@@ -578,12 +583,14 @@ export default function FriendsPage() {
         {/* المرسلة */}
         <TabsContent value="sent">
           <div className="space-y-4">
+
             {sentRequests.map((req) => (
               <Card
                 key={req.id}
                 className="rounded-2xl"
               >
                 <CardContent className="p-4 flex items-center justify-between">
+
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12">
                       <AvatarFallback>
@@ -614,8 +621,10 @@ export default function FriendsPage() {
                 </CardContent>
               </Card>
             ))}
+
           </div>
         </TabsContent>
+
       </Tabs>
 
       <BottomNav />
