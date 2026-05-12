@@ -1,117 +1,258 @@
 "use client";
 
-import { useAuth } from "@/context/auth-context";
-import { db } from "@/lib/firebase";
-import { doc, updateDoc, increment, addDoc, collection, serverTimestamp } from "firebase/firestore";
-import {
-  Heart, MessageCircle, Share2, MoreHorizontal, Flag,
-  ShieldCheck, Lock, PlayCircle, Star, Sparkles, Zap,
-  CheckCircle2, Copy, Send, Rocket, RefreshCw, Facebook, Twitter
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { rewardEngagement, getEngagement, recordShareClick } from "@/lib/engagement-service";
-import { canUserFeaturePost, getRemainingTime, featurePost } from "@/lib/featured-service";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useState, useEffect, useRef } from "react";
-import { Progress } from "@/components/ui/progress";
-import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
-import BoostModal from "./BoostModal";
-import { formatTextWithHashtags } from "@/lib/hashtag-service";
 
-interface PostCardProps {
-  post: any;
-  onLikeOverride?: () => void;
-  likeDisabled?: boolean;
-  externalEngData?: any;
+import { doc, updateDoc, increment } from "firebase/firestore";
+
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+} from "lucide-react";
+
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/hooks/use-toast";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
+
+interface Post {
+  id: string;
+  text: string;
+  title?: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoURL?: string;
+  createdAt?: any;
+  likeCount?: number;
+  commentCount?: number;
+  mediaUrl?: string;
+  contentType?: "image" | "video" | "text";
+  isSponsored?: boolean;
+  isBoosted?: boolean;
+  boostConfig?: {
+    rewardMultiplier?: number;
+    remainingBudget?: number;
+  };
 }
 
-export default function PostCard({ post, onLikeOverride, likeDisabled, externalEngData }: PostCardProps) {
-  const { user, userData } = useAuth();
+interface PostCardProps {
+  post: Post;
+}
+
+export default function PostCard({ post }: PostCardProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const [isFeatureLoading, setIsFeatureLoading] = useState(false);
-  const [localEngData, setLocalEngData] = useState<any>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isBoostOpen, setIsBoostOpen] = useState(false);
-  const [isReposting, setIsReposting] = useState(false);
 
-  // === Progressive Reward & Lock System ===
-  const [viewSeconds, setViewSeconds] = useState(0);
-  const [rewardClaimed, setRewardClaimed] = useState(false);
-  const [likeUnlocked, setLikeUnlocked] = useState(false);
-  const [commentUnlocked, setCommentUnlocked] = useState(false);
-  const [shareUnlocked, setShareUnlocked] = useState(false);
-  const [likeTimer, setLikeTimer] = useState(0);
-  const [commentTimer, setCommentTimer] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout>();
-  const rewardIntervalRef = useRef<NodeJS.Timeout>();
-
-  const engData = externalEngData || localEngData;
+  const [shareUrl, setShareUrl] = useState("");
+  const [isLiking, setIsLiking] = useState(false);
 
   useEffect(() => {
-    if (user &&!externalEngData) {
-      getEngagement(post.id, user.uid).then(setLocalEngData);
+    if (typeof window !== "undefined") {
+      setShareUrl(
+        `${window.location.origin}/posts/${post.id}`
+      );
     }
-  }, [user, post.id, externalEngData]);
+  }, [post.id]);
 
-  // View counter + API call for reward
-  useEffect(() => {
-    if (!user ||!post?.id) return;
+  const multiplier = useMemo(() => {
+    if (
+      post.isBoosted &&
+      post.boostConfig?.remainingBudget &&
+      post.boostConfig.remainingBudget > 0
+    ) {
+      return post.boostConfig.rewardMultiplier || 1;
+    }
 
-    const checkReward = async () => {
-      try {
-        const res = await fetch('/api/reward', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.uid, postId: post.id, type: 'view' })
-        });
-        const data = await res.json();
+    return 1;
+  }, [post]);
 
-        if (data.seconds) setViewSeconds(data.seconds);
+  const handleLike = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e.stopPropagation();
 
-        if (data.status === 'rewarded' &&!rewardClaimed) {
-          setRewardClaimed(true);
-          setLikeUnlocked(true);
-          toast({ title: "Congratulations 🎉", description: "You earned 0.01 points from viewing" });
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
+    if (!user) {
+      toast({
+        title: "دخول مطلوب",
+        description: "سجل دخولك أولاً",
+      });
 
-    checkReward();
-    intervalRef.current = setInterval(() => {
-      setViewSeconds(prev => prev + 1);
-    }, 1000);
+      return;
+    }
 
-    rewardIntervalRef.current = setInterval(checkReward, 5000);
+    if (isLiking) return;
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (rewardIntervalRef.current) clearInterval(rewardIntervalRef.current);
-    };
-  }, [user, post?.id, rewardClaimed
-              </DialogContent>
-      </Dialog>
+    try {
+      setIsLiking(true);
+
+      await updateDoc(doc(db, "posts", post.id), {
+        likeCount: increment(1),
+      });
+
+    } catch (error) {
+      console.error(error);
+
+      toast({
+        variant: "destructive",
+        title: "فشل الإعجاب",
+      });
+
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleShare = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e.stopPropagation();
+
+    if (!shareUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+
+      toast({
+        title: "تم نسخ الرابط",
+      });
+
+    } catch (error) {
+      console.error(error);
+
+      toast({
+        variant: "destructive",
+        title: "فشل النسخ",
+      });
+    }
+  };
+
+  const handleCardClick = () => {
+    router.push(`/posts/${post.id}`);
+  };
+
+  return (
+    <div
+      onClick={handleCardClick}
+      className="bg-card border rounded-3xl p-5 mb-5 shadow-sm hover:shadow-md transition cursor-pointer"
+    >
+      <div className="flex items-center justify-between mb-4">
+
+        <Link
+          href={`/profile/${post.authorId}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-3"
+        >
+          <Avatar className="w-11 h-11">
+            <AvatarImage src={post.authorPhotoURL} />
+
+            <AvatarFallback>
+              {post.authorName?.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+
+          <div>
+            <h3 className="font-bold text-sm">
+              {post.authorName}
+            </h3>
+
+            <span className="text-xs text-muted-foreground">
+              {post.createdAt?.toDate
+                ? formatDistanceToNow(
+                    post.createdAt.toDate(),
+                    {
+                      addSuffix: true,
+                      locale: ar,
+                    }
+                  )
+                : "الآن"}
+            </span>
+          </div>
+        </Link>
+      </div>
+
+      {post.title && (
+        <h2 className="text-xl font-black mb-3">
+          {post.title}
+        </h2>
+      )}
+
+      {post.mediaUrl &&
+        post.contentType === "image" && (
+          <div className="relative w-full h-[300px] mb-4 rounded-2xl overflow-hidden">
+            <Image
+              src={post.mediaUrl}
+              alt="post-image"
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
+
+      {post.mediaUrl &&
+        post.contentType === "video" && (
+          <video
+            controls
+            className="w-full rounded-2xl mb-4"
+          >
+            <source src={post.mediaUrl} />
+          </video>
+        )}
+
+      <p className="text-muted-foreground leading-relaxed mb-5 whitespace-pre-wrap">
+        {post.text}
+      </p>
+
+      <Progress
+        value={multiplier * 10}
+        className="mb-5"
+      />
+
+      <div className="flex items-center justify-between">
+
+        <button
+          onClick={handleLike}
+          disabled={isLiking}
+          className="flex items-center gap-2"
+        >
+          <Heart size={20} />
+
+          <span>
+            {post.likeCount || 0}
+          </span>
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/posts/${post.id}`);
+          }}
+          className="flex items-center gap-2"
+        >
+          <MessageCircle size={20} />
+
+          <span>
+            {post.commentCount || 0}
+          </span>
+        </button>
+
+        <button
+          onClick={handleShare}
+          className="flex items-center gap-2"
+        >
+          <Share2 size={20} />
+
+          <span>مشاركة</span>
+        </button>
+      </div>
     </div>
   );
 }
-
