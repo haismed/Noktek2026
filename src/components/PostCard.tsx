@@ -109,3 +109,9 @@ export default function PostCard({ post, onLikeOverride, likeDisabled, externalE
       if (rewardIntervalRef.current) clearInterval(rewardIntervalRef.current);
     };
   }, [user, post?.id, rewardClaimed
+              </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
