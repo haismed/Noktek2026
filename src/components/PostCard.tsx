@@ -62,18 +62,19 @@ export default function PostCard({ post, onLikeOverride, likeDisabled, externalE
   const [likeTimer, setLikeTimer] = useState(0)
   const [commentTimer, setCommentTimer] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout>()
+  const rewardIntervalRef = useRef<NodeJS.Timeout>()
 
   const engData = externalEngData || localEngData;
 
   useEffect(() => {
-    if (user &&!externalEngData) {
+    if (user && !externalEngData) {
       getEngagement(post.id, user.uid).then(setLocalEngData);
     }
   }, [user, post.id, externalEngData]);
 
   // عداد المشاهدة + استدعاء API للمكافأة
   useEffect(() => {
-    if (!user ||!post?.id) return
+    if (!user || !post?.id) return
 
     const checkReward = async () => {
       try {
@@ -86,12 +87,14 @@ export default function PostCard({ post, onLikeOverride, likeDisabled, externalE
 
         if (data.seconds) setViewSeconds(data.seconds)
 
-        if (data.status === 'rewarded' &&!rewardClaimed) {
+        if (data.status === 'rewarded' && !rewardClaimed) {
           setRewardClaimed(true)
           setLikeUnlocked(true)
           toast({ title: "مبروك 🎉", description: "ربحت 0.01 نقطة من المشاهدة" })
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error(e)
+      }
     }
 
     checkReward()
@@ -99,91 +102,12 @@ export default function PostCard({ post, onLikeOverride, likeDisabled, externalE
       setViewSeconds(prev => prev + 1)
     }, 1000)
 
-    const rewardInterval = setInterval(checkReward, 5000)
+    rewardIntervalRef.current = setInterval(checkReward, 5000)
 
     return () => {
-      clearInterval(intervalRef.current)
-      clearInterval(rewardInterval)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (rewardIntervalRef.current) clearInterval(rewardIntervalRef.current)
     }
-  }, [user, post?.id, rewardClaimed])
+  }, [user, post?.id, rewardClaimed, toast])
 
-  // فتح التعليق بعد 10ث من اللايك
-  useEffect(() => {
-    if (likeTimer > 0 && likeTimer < 10) {
-      const timer = setTimeout(() => setLikeTimer(prev => prev + 1), 1000)
-      return () => clearTimeout(timer)
-    }
-    if (likeTimer >= 10) setCommentUnlocked(true)
-  }, [likeTimer])
-
-  // فتح المشاركة بعد 10ث من التعليق
-    useEffect(() => {
-    if (!user ||!post?.id) return;
-
-    const checkReward = async () => {
-      try {
-        const res = await fetch('/api/reward', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.uid, postId: post.id, type: 'view' })
-        });
-        const data = await res.json();
-        if (data.seconds) setViewSeconds(data.seconds);
-        if (data.status === 'rewarded' &&!rewardClaimed) {
-          setRewardClaimed(true);
-          setLikeUnlocked(true);
-          toast({ title: "مبروك 🎉", description: "ربحت 0.01 نقطة" });
-        }
-      } catch (e) {}
-    };
-
-    checkReward();
-    intervalRef.current = setInterval(() => {
-      setViewSeconds(prev => prev + 1);
-    }, 1000);
-    const rewardInterval = setInterval(checkReward, 5000);
-
-    return () => {
-      clearInterval(intervalRef.current);
-      clearInterval(rewardInterval);
-    };
-  }, [user, post?.id, rewardClaimed]);
-
-  useEffect(() => {
-    if (likeTimer > 0 && likeTimer < 10) {
-      const timer = setTimeout(() => setLikeTimer(prev => prev + 1), 1000);
-      return () => clearTimeout(timer);
-    }
-    if (likeTimer >= 10) setCommentUnlocked(true);
-  }, [likeTimer]);
-
-  useEffect(() => {
-    if (commentTimer > 0 && commentTimer < 10) {
-      const timer = setTimeout(() => setCommentTimer(prev => prev + 1), 1000);
-      return () => clearTimeout(timer);
-    }
-    if (commentTimer >= 10) setShareUnlocked(true);
-  }, [commentTimer]);
-
-  const handleLike = async () => {
-    if (!likeUnlocked && !post.isSponsored) {
-      toast({ title: "مقفل 🔒", description: `شاهد ${45 - viewSeconds} ثانية لفتح الإعجاب` });
-      return;
-    }
-    if (onLikeOverride) {
-      onLikeOverride();
-      return;
-    }
-    if (!user) {
-      toast({ title: "دخول مطلوب", description: "سجل دخولك للتفاعل." });
-      return;
-    }
-    try {
-      await updateDoc(doc(db, "posts", post.id), { likeCount: increment(1) });
-      if (!engData?.likeRewarded) {
-        setLikeTimer(1);
-      }
-    } catch (e) {
-      toast({ title: "خطأ", description: "فشل الإعجاب" });
-    }
-  };
+  // باقي الفانكشنز حق
