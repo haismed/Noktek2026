@@ -205,7 +205,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ postId: 
     }
   };
 
-  if (loading) return <div className="p-10 text-center flex items-center justify-center min-h-"><Loader2 className="animate-spin text-primary" /></div>;
+  if (loading) return <div className="p-10 text-center flex items-center justify-center min-h-[50vh]"><Loader2 className="animate-spin text-primary" /></div>;
   if (!post) return <div className="p-10 text-center">المنشور غير موجود</div>;
 
   let nextGoal = 45;
@@ -261,3 +261,6 @@ export default function PostDetailsPage({ params }: { params: Promise<{ postId: 
           ))}
         </div>
       </div>
+    </div>
+  );
+}
